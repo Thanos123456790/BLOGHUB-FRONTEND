@@ -1,0 +1,166 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Blogify palette — deliberately 3 colors, light mode only:
+  1) Slate  — neutral base for background, text, borders, cards
+  2) Indigo — primary brand color: nav, buttons, links, active states
+  3) Amber  — single accent: reactions, follow streaks, highlights, notification dot
+*/
+
+:root {
+  --radius: 0.875rem;
+  color-scheme: light;
+
+  --background: #f8fafc;       /* slate-50 */
+  --foreground: #0f172a;       /* slate-900 */
+
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  --primary: #4f46e5;          /* indigo-600 */
+  --primary-foreground: #ffffff;
+
+  --secondary: #eef2ff;        /* indigo-50 */
+  --secondary-foreground: #4338ca; /* indigo-700 */
+
+  --muted: #f1f5f9;            /* slate-100 */
+  --muted-foreground: #64748b; /* slate-500 */
+
+  --accent: #fffbeb;           /* amber-50 */
+  --accent-foreground: #b45309; /* amber-700 */
+
+  /* solid amber used for hearts, dots, rings */
+  --brand-amber: #f59e0b;
+  --brand-amber-foreground: #ffffff;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #e2e8f0;           /* slate-200 */
+  --input: #e2e8f0;
+  --ring: #4f46e5;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #4f46e5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef2ff;
+  --sidebar-accent-foreground: #4338ca;
+  --sidebar-border: #e2e8f0;
+  --sidebar-ring: #4f46e5;
+}
+
+/*
+  Dark mode — same 3-hue identity (slate / indigo / amber), shifted for a
+  dark background. Activated via the `.dark` class on <html>, toggled from
+  Settings > Appearance and persisted to localStorage.
+*/
+.dark {
+  color-scheme: dark;
+  --background: #0a0f1c;       /* near-black slate */
+  --foreground: #f1f5f9;       /* slate-100 */
+
+  --card: #111827;             /* slate-900-ish */
+  --card-foreground: #f1f5f9;
+
+  --popover: #131a2b;
+  --popover-foreground: #f1f5f9;
+
+  --primary: #6366f1;          /* indigo-500, brighter for dark bg */
+  --primary-foreground: #ffffff;
+
+  --secondary: #1e2238;        /* indigo-tinted dark */
+  --secondary-foreground: #c7d2fe; /* indigo-200 */
+
+  --muted: #161d2e;
+  --muted-foreground: #94a3b8; /* slate-400 */
+
+  --accent: #2a2113;           /* amber-tinted dark */
+  --accent-foreground: #fbbf24; /* amber-400 */
+
+  --brand-amber: #f59e0b;
+  --brand-amber-foreground: #1c1304;
+
+  --destructive: #f87171;
+  --destructive-foreground: #1c0a0a;
+
+  --border: #232b3e;
+  --input: #232b3e;
+  --ring: #6366f1;
+
+  --sidebar: #0d1322;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #6366f1;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1e2238;
+  --sidebar-accent-foreground: #c7d2fe;
+  --sidebar-border: #232b3e;
+  --sidebar-ring: #6366f1;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-brand-amber: var(--brand-amber);
+  --color-brand-amber-foreground: var(--brand-amber-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
