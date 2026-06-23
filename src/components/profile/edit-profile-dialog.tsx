@@ -4,6 +4,8 @@ import * as React from "react";
 import { toast } from "sonner";
 import { CameraIcon, Loader2Icon } from "lucide-react";
 
+import { useUser } from "@clerk/nextjs";
+
 import type { UserProfile } from "@/lib/api/types";
 import { useUpdateMeMutation, useUploadAssetMutation } from "@/lib/store/api/blogifyApi";
 import {
@@ -31,9 +33,17 @@ import { ImageEditorDialog } from "@/components/editor/image-editor-dialog";
 export function EditProfileDialog({ user }: { user: UserProfile }) {
   const [updateMe, { isLoading: saving }] = useUpdateMeMutation();
   const [uploadAsset, { isLoading: uploading }] = useUploadAssetMutation();
+  const { user: clerkUser } = useUser();
+
+  // If the backend name looks like a Clerk-generated ID, suggest the Clerk full name instead
+  const isClerkGeneratedName =
+    /^user_[a-zA-Z0-9]+$/.test(user.name) || user.name === user.handle;
+  const defaultName = isClerkGeneratedName
+    ? (clerkUser?.fullName ?? clerkUser?.username ?? user.name)
+    : user.name;
 
   const [open, setOpen] = React.useState(false);
-  const [name, setName] = React.useState(user.name);
+  const [name, setName] = React.useState(defaultName);
   const [bio, setBio] = React.useState(user.bio ?? "");
   const [location, setLocation] = React.useState(user.location ?? "");
   const [avatarUrl, setAvatarUrl] = React.useState(user.avatarUrl ?? "");
@@ -44,7 +54,7 @@ export function EditProfileDialog({ user }: { user: UserProfile }) {
 
   function handleOpenChange(next: boolean) {
     if (next) {
-      setName(user.name);
+      setName(defaultName);
       setBio(user.bio ?? "");
       setLocation(user.location ?? "");
       setAvatarUrl(user.avatarUrl ?? "");

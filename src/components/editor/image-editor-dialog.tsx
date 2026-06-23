@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { useElementSize } from "@/lib/use-element-size";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -62,12 +61,6 @@ function filterCss(a: Pick<Adjustments, "brightness" | "contrast" | "saturate">)
   return `brightness(${a.brightness}%) contrast(${a.contrast}%) saturate(${a.saturate}%)`;
 }
 
-/**
- * Note on resetting state: this component is remounted fresh for every new
- * image via a `key={imageSrc}` prop at the call sites (rather than resetting
- * state from an effect when `imageSrc`/`open` change) — the React-recommended
- * way to reset all state when a piece of identity changes.
- */
 export function ImageEditorDialog({
   open,
   onOpenChange,
@@ -78,17 +71,27 @@ export function ImageEditorDialog({
   title = "Edit photo",
   onSave,
 }: ImageEditorDialogProps) {
-  const [viewportRef, viewport] = useElementSize<HTMLDivElement>();
+  const viewportRef = React.useRef<HTMLDivElement>(null);
   const imgRef = React.useRef<HTMLImageElement>(null);
   const [natural, setNatural] = React.useState({ width: 0, height: 0 });
+  const [viewport, setViewport] = React.useState({ width: 0, height: 0 });
   const [adj, setAdj] = React.useState<Adjustments>(DEFAULT_ADJUSTMENTS);
-  const dragState = React.useRef<{
-    pointerId: number;
-    startX: number;
-    startY: number;
-    startOffsetX: number;
-    startOffsetY: number;
-  } | null>(null);
+
+  // Track viewport size via ResizeObserver
+  React.useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const e = entries[0];
+      if (!e) return;
+      const { width, height } = e.contentRect;
+      setViewport((prev) =>
+        prev.width === width && prev.height === height ? prev : { width, height }
+      );
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open]); // re-attach when dialog opens
 
   const rotatedNatural = React.useMemo(() => {
     if (adj.rotation === 90 || adj.rotation === 270) {
@@ -97,9 +100,10 @@ export function ImageEditorDialog({
     return natural;
   }, [natural, adj.rotation]);
 
+  // baseScale: scale so image fills (covers) the viewport
   const baseScale = React.useMemo(() => {
     if (!viewport.width || !viewport.height || !rotatedNatural.width || !rotatedNatural.height) {
-      return 0;
+      return 1;
     }
     return Math.max(
       viewport.width / rotatedNatural.width,
@@ -123,16 +127,23 @@ export function ImageEditorDialog({
     [rotatedNatural, viewport]
   );
 
-  // Always render/export the clamped position, derived fresh on every
-  // render from the raw drag offset + current scale — this keeps the image
-  // in-bounds even right after a zoom/rotation change, without needing to
-  // write corrected values back into state from an effect.
   const displayOffset = effectiveScale
     ? clampOffset(adj.offsetX, adj.offsetY, effectiveScale)
     : { x: 0, y: 0 };
 
+  // Drag state stored in a ref so we don't cause re-renders during drag
+  const dragState = React.useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startOffsetX: number;
+    startOffsetY: number;
+  } | null>(null);
+
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.preventDefault();
+    // Capture on the viewport div itself
+    viewportRef.current?.setPointerCapture(e.pointerId);
     dragState.current = {
       pointerId: e.pointerId,
       startX: e.clientX,
@@ -145,6 +156,7 @@ export function ImageEditorDialog({
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
     const drag = dragState.current;
     if (!drag || drag.pointerId !== e.pointerId) return;
+    e.preventDefault();
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
     const next = clampOffset(drag.startOffsetX + dx, drag.startOffsetY + dy, effectiveScale);
@@ -152,7 +164,10 @@ export function ImageEditorDialog({
   }
 
   function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
-    if (dragState.current?.pointerId === e.pointerId) dragState.current = null;
+    if (dragState.current?.pointerId === e.pointerId) {
+      dragState.current = null;
+      viewportRef.current?.releasePointerCapture(e.pointerId);
+    }
   }
 
   function rotateBy(delta: 90 | -90) {
@@ -166,7 +181,11 @@ export function ImageEditorDialog({
 
   function handleSave() {
     const imgEl = imgRef.current;
-    if (!imgEl || !viewport.width || !viewport.height) return;
+    if (!imgEl || !natural.width || !natural.height) return;
+
+    // Use actual viewport size, or fallback to a default
+    const vw = viewport.width || 400;
+    const vh = viewport.height || 400;
 
     const target =
       outputSize ??
@@ -180,18 +199,23 @@ export function ImageEditorDialog({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const outScale = target.width / viewport.width;
+    const outScale = target.width / vw;
 
     ctx.save();
     ctx.filter = filterCss(adj);
+    // Move to center of canvas + pan offset
     ctx.translate(
       canvas.width / 2 + displayOffset.x * outScale,
       canvas.height / 2 + displayOffset.y * outScale
     );
+    // Apply rotation
     ctx.rotate((adj.rotation * Math.PI) / 180);
+    // Apply flip
     if (adj.flipped) ctx.scale(-1, 1);
+    // Apply effective scale (baseScale * zoom)
     const drawScale = effectiveScale * outScale;
     ctx.scale(drawScale, drawScale);
+    // Draw image centered
     ctx.drawImage(imgEl, -natural.width / 2, -natural.height / 2, natural.width, natural.height);
     ctx.restore();
 
@@ -199,6 +223,19 @@ export function ImageEditorDialog({
     onSave(canvas.toDataURL(mime, 0.92));
     onOpenChange(false);
   }
+
+  // The image transform: we position the image at center via the parent flex,
+  // then apply: translate(pan) → rotate → scale
+  // In CSS transform order (right to left execution): scale first, then rotate, then translate
+  // This means: image is scaled up, then rotated, then panned — which is what we want.
+  const imageTransform = [
+    `translate(${displayOffset.x}px, ${displayOffset.y}px)`,
+    `rotate(${adj.rotation}deg)`,
+    adj.flipped ? "scaleX(-1)" : "",
+    `scale(${effectiveScale || baseScale || 1})`,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -212,6 +249,7 @@ export function ImageEditorDialog({
 
         {imageSrc && (
           <>
+            {/* Viewport / crop window */}
             <div
               ref={viewportRef}
               onPointerDown={handlePointerDown}
@@ -230,6 +268,7 @@ export function ImageEditorDialog({
                   : undefined
               }
             >
+              {/* Image centered in viewport; transform moves it around */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <img
                   ref={imgRef}
@@ -240,12 +279,13 @@ export function ImageEditorDialog({
                     const el = e.currentTarget;
                     setNatural({ width: el.naturalWidth, height: el.naturalHeight });
                   }}
-                  className="max-w-none pointer-events-none"
+                  className="max-w-none pointer-events-none origin-center"
                   style={{
                     width: natural.width || undefined,
                     height: natural.height || undefined,
-                    transform: `translate(${displayOffset.x}px, ${displayOffset.y}px) scale(${effectiveScale || 1}) rotate(${adj.rotation}deg) ${adj.flipped ? "scaleX(-1)" : ""}`,
+                    transform: imageTransform,
                     filter: filterCss(adj),
+                    willChange: "transform",
                   }}
                 />
               </div>
@@ -344,7 +384,7 @@ export function ImageEditorDialog({
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="button" onClick={handleSave} disabled={!imageSrc}>
+          <Button type="button" onClick={handleSave} disabled={!imageSrc || !natural.width}>
             Save photo
           </Button>
         </DialogFooter>
