@@ -1,0 +1,14 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Official Next.js adapter — handles SSR pages, the App Router, the
+# proxy.ts middleware (as a Netlify Edge Function), and the API routes
+# under src/app/api/** (as Netlify Functions). Without this, Netlify
+# has no idea how to serve a server-rendered Next.js app and you get
+# 404s on every route.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
