@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AtSignIcon,
   BellIcon,
@@ -32,19 +33,32 @@ const iconByType: Record<NotificationType, typeof BellIcon> = {
 };
 
 function buildSentence(actorNames: string[], message: string) {
-  if (actorNames.length === 0) return message;
-  if (actorNames.length === 1) return `${actorNames[0]} ${message}`;
+  if (actorNames.length <= 1) return message;
   if (actorNames.length === 2)
     return `${actorNames[0]} and ${actorNames[1]} ${message}`;
   return `${actorNames[0]}, ${actorNames[1]} and ${actorNames.length - 2} others ${message}`;
 }
 
 export default function NotificationsPage() {
+  const router = useRouter();
   const { data, isLoading } = useGetNotificationsQuery({ size: 50 });
   const [markAllRead] = useMarkAllNotificationsReadMutation();
   const [markRead] = useMarkNotificationReadMutation();
 
   const notifications = data?.content ?? [];
+
+  const handleClick = (
+    e: React.MouseEvent,
+    id: string,
+    isRead: boolean,
+    href: string
+  ) => {
+    e.preventDefault();
+    if (!isRead) markRead(id);
+    router.push(href);
+  };
+
+  console.log("All notifications",data);
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-5 lg:py-8 max-w-[640px] mx-auto">
@@ -78,7 +92,7 @@ export default function NotificationsPage() {
               <Link
                 key={n.id}
                 href={linkHref}
-                onClick={() => !n.isRead && markRead(n.id)}
+                onClick={(e) => handleClick(e, n.id, n.isRead, linkHref)}
                 className={cn(
                   "flex items-start gap-3.5 rounded-2xl border border-transparent px-4 py-3.5 transition-colors hover:border-border hover:bg-muted/60",
                   !n.isRead && "bg-secondary/60"

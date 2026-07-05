@@ -15,6 +15,7 @@ import {
 } from "@/lib/store/api/blogifyApi";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ShareButton } from "./share/ShareButton";
 
 interface ReactableBlog {
   id: string;
@@ -103,17 +104,10 @@ export function ReactionBar({
           {commentCount > 0 ? compactNumber(commentCount) : "Comment"}
         </Button>
 
-        <Button
-          variant="ghost"
-          size="sm"
+        <ShareButton
+          blogId={blog.id}
           className="gap-1.5"
-          onClick={() =>
-            toast("Link copied", { description: "Post link copied to clipboard." })
-          }
-        >
-          <Share2Icon className="size-4" />
-          <span className="hidden sm:inline">Share</span>
-        </Button>
+        />
       </div>
 
       <Button

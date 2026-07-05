@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { SignIn } from "@clerk/nextjs";
+import { SignIn, SignUp } from "@clerk/nextjs";
 import { Feather, MessageCircleIcon, PenSquareIcon, UsersIcon } from "lucide-react";
 
 import { clerkAppearance } from "@/lib/clerk-appearance";
 
 export const metadata = {
-  title: "Log in — Blogify",
+  title: "Join Blogify",
 };
 
 const highlights = [
@@ -27,11 +27,18 @@ const highlights = [
   },
 ];
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mode?: string }>;
+}) {
   const { userId } = await auth();
   if (userId) {
     redirect("/");
   }
+
+  const params = await searchParams;
+  const isSignUp = params.mode === "signup";
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
@@ -99,21 +106,61 @@ export default async function LoginPage() {
           </div>
 
           <div className="mb-6 text-center lg:text-left">
-            <h2 className="font-display text-2xl font-semibold tracking-tight">
-              Welcome back
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Sign in with your email or Google to continue.
-            </p>
+            {isSignUp ? (
+              <>
+                <h2 className="font-display text-2xl font-semibold tracking-tight">
+                  Create your account
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Join Blogify and start writing today.
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Already have an account?{" "}
+                  <a
+                    href="/login"
+                    className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+                  >
+                    Welcome back — sign in
+                  </a>
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="font-display text-2xl font-semibold tracking-tight">
+                  Welcome back
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Sign in with your email or Google to continue.
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  New here?{" "}
+                  <a
+                    href="/login?mode=signup"
+                    className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+                  >
+                    Create an account
+                  </a>
+                </p>
+              </>
+            )}
           </div>
 
-          <SignIn
-            routing="path"
-            path="/login"
-            fallbackRedirectUrl="/"
-            signUpFallbackRedirectUrl="/"
-            appearance={clerkAppearance}
-          />
+          {isSignUp ? (
+            <SignUp
+              routing="hash"
+              fallbackRedirectUrl="/"
+              signInFallbackRedirectUrl="/"
+              appearance={clerkAppearance}
+            />
+          ) : (
+            <SignIn
+              routing="path"
+              path="/login"
+              fallbackRedirectUrl="/"
+              signUpFallbackRedirectUrl="/"
+              appearance={clerkAppearance}
+            />
+          )}
 
           <p className="mt-6 text-center text-xs text-muted-foreground">
             By continuing you agree to Blogify&rsquo;s demo Terms and Privacy Policy.

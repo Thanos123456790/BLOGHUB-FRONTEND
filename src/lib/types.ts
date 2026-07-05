@@ -7,7 +7,7 @@
  * "video" has no backend equivalent yet (BlockType only has PARAGRAPH /
  * HEADING / QUOTE / IMAGE) — see README "Known backend gaps".
  */
-export type EditorBlockType = "paragraph" | "heading" | "quote" | "image";
+export type EditorBlockType = "paragraph" | "heading" | "quote" | "image" | "pdf" | "video" | "code";
 
 export interface EditorBlock {
   id: string;
@@ -15,4 +15,5 @@ export interface EditorBlock {
   content: string;
   caption?: string;
   filter?: string;
+  language?: string;
 }

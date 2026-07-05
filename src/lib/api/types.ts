@@ -2,7 +2,7 @@
 // Keep this in sync with the backend if those DTOs change.
 
 export type ReactionType = "LIKE" | "CLAP" | "LOVE" | "INSIGHTFUL";
-export type BlockType = "PARAGRAPH" | "HEADING" | "QUOTE" | "IMAGE";
+export type BlockType = "PARAGRAPH" | "HEADING" | "QUOTE" | "IMAGE" | "PDF" | "VIDEO" | "CODE";
 export type NotificationType =
   | "FOLLOW"
   | "REACTION"
@@ -10,7 +10,13 @@ export type NotificationType =
   | "REPLY"
   | "MENTION"
   | "COMMENT_REACTION";
-export type AssetType = "AVATAR" | "BANNER" | "BLOG_COVER" | "BLOG_BLOCK_IMAGE";
+export type AssetType =
+  | "AVATAR"
+  | "BANNER"
+  | "BLOG_COVER"
+  | "BLOG_BLOCK_IMAGE"
+  | "BLOG_BLOCK_PDF"
+  | "BLOG_BLOCK_VIDEO";
 
 /** Backend validates this against ^(grayscale|warm|cool|vintage|dramatic)?$ */
 export type CoverFilterId = "grayscale" | "warm" | "cool" | "vintage" | "dramatic";
@@ -46,6 +52,24 @@ export interface ApiErrorBody {
 
 // ── Users ─────────────────────────────────────────────────────────────────
 
+export interface EducationEntry {
+  institution: string;
+  degree?: string;
+  field?: string;
+  startYear?: number;
+  endYear?: number;
+  description?: string;
+}
+
+export interface ExperienceEntry {
+  company: string;
+  title: string;
+  startDate?: string;
+  endDate?: string;
+  current?: boolean;
+  description?: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -61,6 +85,21 @@ export interface UserProfile {
   joinedAt: string;
   /** Whether the *currently authenticated* caller follows this profile. */
   isFollowing: boolean;
+  // Online presence
+  isOnline: boolean;
+  lastSeenAt?: string;
+  // Social links
+  websiteUrl?: string | null;
+  twitterHandle?: string | null;
+  githubHandle?: string | null;
+  linkedinUrl?: string | null;
+  instagramHandle?: string | null;
+  youtubeUrl?: string | null;
+  // Professional
+  currentJobTitle?: string | null;
+  currentCompany?: string | null;
+  education?: EducationEntry[];
+  experience?: ExperienceEntry[];
 }
 
 export interface UpdateProfileRequest {
@@ -69,6 +108,16 @@ export interface UpdateProfileRequest {
   location?: string;
   avatarUrl?: string;
   bannerUrl?: string;
+  websiteUrl?: string;
+  twitterHandle?: string;
+  githubHandle?: string;
+  linkedinUrl?: string;
+  instagramHandle?: string;
+  youtubeUrl?: string;
+  currentJobTitle?: string;
+  currentCompany?: string;
+  education?: EducationEntry[];
+  experience?: ExperienceEntry[];
 }
 
 // ── Reactions ─────────────────────────────────────────────────────────────
@@ -92,6 +141,7 @@ export interface BlogBlockRequest {
   content: string;
   caption?: string;
   filter?: string;
+  language?: string;
   position: number;
 }
 
@@ -101,6 +151,7 @@ export interface BlogBlockResponse {
   content: string;
   caption: string | null;
   filter: string | null;
+  language: string | null;
   position: number;
 }
 
@@ -117,6 +168,7 @@ export interface BlogCard {
   myReaction: ReactionType | null;
   bookmarked: boolean;
   commentsCount: number;
+  isDraft: boolean;
   createdAt: string;
 }
 
@@ -146,6 +198,7 @@ export interface CreateBlogRequest {
   readTimeMinutes: number;
   tags?: string[];
   blocks: BlogBlockRequest[];
+  isDraft?: boolean;
 }
 
 export interface UpdateBlogRequest {
@@ -156,6 +209,7 @@ export interface UpdateBlogRequest {
   readTimeMinutes?: number;
   tags?: string[];
   blocks?: BlogBlockRequest[];
+  isDraft?: boolean;
 }
 
 // ── Comments ──────────────────────────────────────────────────────────────

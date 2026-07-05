@@ -29,15 +29,18 @@ export default function FollowPage() {
 
   const following = followingPage?.content ?? [];
   const followers = followersPage?.content ?? [];
+  console.log("follow lists",followersPage);
+  console.log("following lists",followingPage);
+
 
   const filterByQuery = (list: UserProfile[]) =>
     query.trim() === ""
       ? list
       : list.filter(
-          (u) =>
-            u.name.toLowerCase().includes(query.toLowerCase()) ||
-            u.handle.toLowerCase().includes(query.toLowerCase())
-        );
+        (u) =>
+          u.name.toLowerCase().includes(query.toLowerCase()) ||
+          u.handle.toLowerCase().includes(query.toLowerCase())
+      );
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-5 lg:py-8 max-w-[640px] mx-auto">
@@ -74,7 +77,7 @@ export default function FollowPage() {
             ) : (
               filterByQuery(following).map((u) => (
                 <div
-                  key={u.id}
+                  key={`${u.id}-${u.isFollowing}`}  // ← changed from key={u.id}
                   className="px-3 py-3 border-b border-border last:border-0"
                 >
                   <UserRow user={u} showBio />
@@ -93,7 +96,7 @@ export default function FollowPage() {
             ) : (
               filterByQuery(followers).map((u) => (
                 <div
-                  key={u.id}
+                  key={`${u.id}-${u.isFollowing}`}  // ← changed from key={u.id}
                   className="px-3 py-3 border-b border-border last:border-0"
                 >
                   <UserRow user={u} showBio />

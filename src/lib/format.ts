@@ -1,11 +1,6 @@
-// Fixed reference "now" so relative timestamps in this demo (seeded data,
-// no real backend) stay consistent across reloads instead of drifting as
-// real time passes.
-export const DEMO_NOW_ISO = "2026-06-19T12:00:00Z";
-
 export function relativeTime(iso: string): string {
   const date = new Date(iso);
-  const now = new Date(DEMO_NOW_ISO);
+  const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffSec = Math.round(diffMs / 1000);
   const diffMin = Math.round(diffSec / 60);
@@ -33,13 +28,13 @@ const ACTIVE_NOW_THRESHOLD_MIN = 5;
 
 /** True when the user was last active within the last few minutes. */
 export function isActiveNow(lastActiveAt: string): boolean {
-  const diffMs = new Date(DEMO_NOW_ISO).getTime() - new Date(lastActiveAt).getTime();
+  const diffMs = new Date().getTime() - new Date(lastActiveAt).getTime();
   return diffMs / 60000 <= ACTIVE_NOW_THRESHOLD_MIN;
 }
 
 /** Short "Active now" / "Active 45m ago" / "Active 3h ago" label. */
 export function formatActivity(lastActiveAt: string): string {
-  const diffMs = new Date(DEMO_NOW_ISO).getTime() - new Date(lastActiveAt).getTime();
+  const diffMs = new Date().getTime() - new Date(lastActiveAt).getTime();
   const diffMin = Math.round(diffMs / 60000);
 
   if (diffMin <= ACTIVE_NOW_THRESHOLD_MIN) return "Active now";

@@ -8,6 +8,7 @@ import { BlogCard } from "@/components/blog/blog-card";
 import { ComposerPrompt } from "@/components/blog/composer-prompt";
 import { TrendingTagsCard } from "@/components/widgets/trending-tags";
 import { SuggestedWritersCard } from "@/components/widgets/suggested-writers";
+import { ActiveFollowersBar } from "@/components/widgets/active-followers-bar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Feather } from "lucide-react";
 
@@ -23,8 +24,12 @@ export default function HomePage() {
         <div className="flex items-center justify-between mb-5">
           <h1 className="font-display text-2xl font-semibold tracking-tight">
             Home
+
           </h1>
         </div>
+          <ActiveFollowersBar />
+
+        {/* Active followers bar — only visible on the "following" tab */}
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
           <TabsList className="mb-5">

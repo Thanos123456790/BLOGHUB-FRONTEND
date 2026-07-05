@@ -35,16 +35,20 @@ export function Sidebar() {
   const { signOut } = useClerk();
   const { user: clerkUser } = useUser();
 
-  // Prefer the user's own edited name from the backend profile (me.name),
-  // but fall back to Clerk's full name if the backend name looks like a
-  // system-generated handle (e.g. "user_2abc123").
+  // Build display name: use Clerk firstName+lastName if backend name is system-generated
   const isClerkGeneratedName = me?.name
     ? /^user_[a-zA-Z0-9]+$/.test(me.name) || me.name === me?.handle
     : false;
+
+  const clerkFullName =
+    clerkUser?.firstName && clerkUser?.lastName
+      ? `${clerkUser.firstName} ${clerkUser.lastName}`
+      : clerkUser?.fullName ?? clerkUser?.username;
+
   const displayName =
-    (isClerkGeneratedName
-      ? clerkUser?.fullName ?? clerkUser?.username ?? me?.name
-      : me?.name) ?? clerkUser?.fullName ?? clerkUser?.username ?? "Loading...";
+    isClerkGeneratedName
+      ? (clerkFullName ?? me?.name ?? "")
+      : (me?.name ?? clerkFullName ?? "");
 
   async function handleLogOut() {
     try {
@@ -128,8 +132,8 @@ export function Sidebar() {
           <DropdownMenuTrigger asChild>
             <button className="flex w-full items-center gap-3 rounded-full p-2 hover:bg-muted transition-colors md:justify-center lg:justify-start">
               <Avatar className="size-9 ring-2 ring-card shrink-0">
-                <AvatarImage src={me?.avatarUrl ?? undefined} alt={me?.name} />
-                <AvatarFallback>{me?.name?.[0] ?? "?"}</AvatarFallback>
+                <AvatarImage src={me?.avatarUrl ?? undefined} alt={displayName} />
+                <AvatarFallback>{displayName?.[0] ?? "?"}</AvatarFallback>
               </Avatar>
               <span className="hidden lg:flex flex-col items-start min-w-0">
                 <span className="text-sm font-medium truncate max-w-[140px]">
@@ -146,8 +150,8 @@ export function Sidebar() {
             <DropdownMenuItem asChild>
               <Link href="/profile">
                 <Avatar className="size-5">
-                  <AvatarImage src={me?.avatarUrl ?? undefined} alt={me?.name} />
-                  <AvatarFallback>{me?.name?.[0] ?? "?"}</AvatarFallback>
+                  <AvatarImage src={me?.avatarUrl ?? undefined} alt={displayName} />
+                  <AvatarFallback>{displayName?.[0] ?? "?"}</AvatarFallback>
                 </Avatar>
                 View profile
               </Link>
@@ -161,7 +165,7 @@ export function Sidebar() {
             {clerkUser && (
               <>
                 <DropdownMenuLabel className="font-normal">
-                  Signed in via Clerk as{" "}
+                  Signed in as{" "}
                   <span className="text-foreground font-medium">
                     {clerkUser.primaryEmailAddress?.emailAddress ??
                       clerkUser.username ??

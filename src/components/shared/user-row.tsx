@@ -1,17 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 import type { UserProfile } from "@/lib/api/types";
 import { compactNumber } from "@/lib/format";
-import {
-  useFollowUserMutation,
-  useGetMeQuery,
-  useUnfollowUserMutation,
-} from "@/lib/store/api/blogifyApi";
+import { useGetMeQuery } from "@/lib/store/api/blogifyApi";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { VerifiedBadge } from "./verified-badge";
+import { FollowButton } from "@/components/follow/FollowButton";
 import { cn } from "@/lib/utils";
 
 export function UserRow({
@@ -26,10 +23,8 @@ export function UserRow({
   dense?: boolean;
 }) {
   const { data: me } = useGetMeQuery();
-  const [followUser, { isLoading: following_ }] = useFollowUserMutation();
-  const [unfollowUser, { isLoading: unfollowing }] = useUnfollowUserMutation();
+  const [isFollowing, setIsFollowing] = useState(user.isFollowing);
   const isMe = me?.id === user.id;
-  const busy = following_ || unfollowing;
 
   return (
     <div className="flex items-center gap-3">
@@ -39,6 +34,7 @@ export function UserRow({
           <AvatarFallback>{user.name[0]}</AvatarFallback>
         </Avatar>
       </Link>
+
       <div className="min-w-0 flex-1">
         <Link
           href={`/u/${user.handle}`}
@@ -59,18 +55,14 @@ export function UserRow({
           </p>
         )}
       </div>
+
       {!isMe && (
-        <Button
-          variant={user.isFollowing ? "outline" : "default"}
-          size="sm"
+        <FollowButton
+          handle={user.handle}
+          initialIsFollowing={isFollowing}
+          onUpdated={(updated) => setIsFollowing(updated.isFollowing)}
           className="shrink-0"
-          disabled={busy}
-          onClick={() =>
-            user.isFollowing ? unfollowUser(user.id) : followUser(user.id)
-          }
-        >
-          {user.isFollowing ? "Following" : "Follow"}
-        </Button>
+        />
       )}
     </div>
   );

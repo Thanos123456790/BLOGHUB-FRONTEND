@@ -22,10 +22,13 @@ export function CommentItem({
   comment,
   blogId,
   depth = 0,
+  /** The root comment ID to post replies against (all nested replies go to same root) */
+  rootCommentId,
 }: {
   comment: CommentResponse;
   blogId: string;
   depth?: number;
+  rootCommentId?: string;
 }) {
   const author = comment.author;
   const [reactToComment] = useReactToCommentMutation();
@@ -33,6 +36,9 @@ export function CommentItem({
   const [replyToComment] = useReplyToCommentMutation();
   const [showReply, setShowReply] = React.useState(false);
   const [showReplies, setShowReplies] = React.useState(depth === 0);
+
+  // The comment ID to reply against — nested replies still target the root comment
+  const replyTargetId = rootCommentId ?? comment.id;
 
   const total = comment.reactions.total;
   const ActiveIcon = comment.myReaction
@@ -140,11 +146,13 @@ export function CommentItem({
               <CommentComposer
                 size="sm"
                 autoFocus
+                // Auto-prefill @handle when replying
+                initialValue={`@${author.handle} `}
                 placeholder={`Reply to ${author.name}...`}
                 onSubmit={(content, taggedUserIds) => {
                   replyToComment({
                     blogId,
-                    commentId: comment.id,
+                    commentId: replyTargetId,
                     body: { content, taggedUserIds },
                   });
                   setShowReply(false);
@@ -163,6 +171,8 @@ export function CommentItem({
                   comment={reply}
                   blogId={blogId}
                   depth={depth + 1}
+                  // All nested replies target the root comment (flat threading)
+                  rootCommentId={replyTargetId}
                 />
               ))}
             </div>

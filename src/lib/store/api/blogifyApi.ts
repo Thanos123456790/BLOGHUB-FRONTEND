@@ -209,11 +209,40 @@ export const blogifyApi = createApi({
 
     markAllNotificationsRead: builder.mutation<void, void>({
       query: () => ({ url: "notifications/read-all", method: "POST" }),
+      // Optimistic update: mark all as read in cache immediately
+      onQueryStarted: async (_, { dispatch, queryFulfilled }) => {
+        const patchResult = dispatch(
+          blogifyApi.util.updateQueryData("getNotifications", { size: 50 }, (draft) => {
+            draft.content.forEach((n) => {
+              n.isRead = true;
+            });
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
       invalidatesTags: [{ type: "Notifications", id: "LIST" }],
     }),
 
     markNotificationRead: builder.mutation<void, string>({
       query: (id) => ({ url: `notifications/${id}/read`, method: "PATCH" }),
+      // Optimistic update: mark individual notification as read immediately
+      onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+        const patchResult = dispatch(
+          blogifyApi.util.updateQueryData("getNotifications", { size: 50 }, (draft) => {
+            const n = draft.content.find((n) => n.id === id);
+            if (n) n.isRead = true;
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
       invalidatesTags: [{ type: "Notifications", id: "LIST" }],
     }),
 
@@ -263,14 +292,42 @@ export const blogifyApi = createApi({
       providesTags: [{ type: "UserList", id: "SUGGESTED" }],
     }),
 
-    // ── Follow ─────────────────────────────────────────────────────────
+    // ── Follow (uses handle, not ID) ───────────────────────────────────
     followUser: builder.mutation<UserProfile, string>({
-      query: (id) => ({ url: `users/${id}/follow`, method: "POST" }),
+      query: (handle) => ({ url: `users/${handle}/follow`, method: "POST" }),
+      // Optimistic update for the public profile cache
+      onQueryStarted: async (handle, { dispatch, queryFulfilled }) => {
+        const patchProfile = dispatch(
+          blogifyApi.util.updateQueryData("getPublicProfile", handle, (draft) => {
+            draft.isFollowing = true;
+            draft.followersCount += 1;
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchProfile.undo();
+        }
+      },
       invalidatesTags: ["Me", "User", "UserList", "BlogList"],
     }),
 
     unfollowUser: builder.mutation<UserProfile, string>({
-      query: (id) => ({ url: `users/${id}/follow`, method: "DELETE" }),
+      query: (handle) => ({ url: `users/${handle}/follow`, method: "DELETE" }),
+      // Optimistic update for the public profile cache
+      onQueryStarted: async (handle, { dispatch, queryFulfilled }) => {
+        const patchProfile = dispatch(
+          blogifyApi.util.updateQueryData("getPublicProfile", handle, (draft) => {
+            draft.isFollowing = false;
+            draft.followersCount = Math.max(0, draft.followersCount - 1);
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchProfile.undo();
+        }
+      },
       invalidatesTags: ["Me", "User", "UserList", "BlogList"],
     }),
 

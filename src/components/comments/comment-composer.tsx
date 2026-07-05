@@ -14,12 +14,15 @@ export function CommentComposer({
   placeholder = "Add a comment...",
   autoFocus = false,
   size = "default",
+  initialValue = "",
   onSubmit,
   onCancel,
 }: {
   placeholder?: string;
   autoFocus?: boolean;
   size?: "default" | "sm";
+  /** Pre-filled text (e.g. "@handle " when replying) */
+  initialValue?: string;
   onSubmit: (content: string, taggedUserIds: string[]) => void;
   onCancel?: () => void;
 }) {
@@ -27,7 +30,7 @@ export function CommentComposer({
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const [searchUsers, { data: searchResults }] = useLazySearchUsersQuery();
 
-  const [value, setValue] = React.useState("");
+  const [value, setValue] = React.useState(initialValue);
   const [mentionState, setMentionState] = React.useState<{
     query: string;
     start: number;
@@ -35,6 +38,14 @@ export function CommentComposer({
   // handle -> id for everyone explicitly picked from the mention dropdown,
   // so submit doesn't have to guess at @handles typed without selecting.
   const mentionedRef = React.useRef<Map<string, string>>(new Map());
+
+  // Position cursor at end of initialValue on mount
+  React.useEffect(() => {
+    if (initialValue && textareaRef.current) {
+      const len = initialValue.length;
+      textareaRef.current.setSelectionRange(len, len);
+    }
+  }, []);
 
   React.useEffect(() => {
     if (mentionState && mentionState.query.length > 0) {

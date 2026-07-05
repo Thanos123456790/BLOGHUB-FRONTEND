@@ -3,6 +3,7 @@
 import * as React from "react";
 import { toast } from "sonner";
 import { CameraIcon, ImageIcon, Loader2Icon } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 
 import type { UserProfile } from "@/lib/api/types";
 import { useGetMeQuery, useUpdateMeMutation, useUploadAssetMutation } from "@/lib/store/api/blogifyApi";
@@ -26,6 +27,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { ImageEditorDialog } from "@/components/editor/image-editor-dialog";
+import { cn } from "@/lib/utils";
 
 type PhotoField = "avatarUrl" | "bannerUrl";
 
@@ -50,8 +52,18 @@ export function AccountSection() {
 function AccountForm({ me }: { me: UserProfile }) {
   const [updateMe, { isLoading: saving }] = useUpdateMeMutation();
   const [uploadAsset, { isLoading: uploading }] = useUploadAssetMutation();
+  const { user: clerkUser } = useUser();
 
-  const [name, setName] = React.useState(me.name);
+  // Determine display name: prefer backend name, fall back to Clerk firstName + lastName
+  const isClerkGeneratedName =
+    /^user_[a-zA-Z0-9]+$/.test(me.name) || me.name === me.handle;
+  const clerkFullName =
+    clerkUser?.firstName && clerkUser?.lastName
+      ? `${clerkUser.firstName} ${clerkUser.lastName}`
+      : clerkUser?.fullName ?? clerkUser?.username ?? me.name;
+  const resolvedName = isClerkGeneratedName ? clerkFullName : me.name;
+
+  const [name, setName] = React.useState(resolvedName);
   const [bio, setBio] = React.useState(me.bio ?? "");
   const [location, setLocation] = React.useState(me.location ?? "");
   const avatarInputRef = React.useRef<HTMLInputElement>(null);
@@ -60,7 +72,11 @@ function AccountForm({ me }: { me: UserProfile }) {
   const [editorField, setEditorField] = React.useState<PhotoField | null>(null);
   const [editorSrc, setEditorSrc] = React.useState<string | null>(null);
 
-  const isDirty = name !== me.name || bio !== (me.bio ?? "") || location !== (me.location ?? "");
+  // Loading skeleton states for images
+  const [bannerLoading, setBannerLoading] = React.useState(!!me.bannerUrl);
+  const [avatarLoading, setAvatarLoading] = React.useState(!!me.avatarUrl);
+
+  const isDirty = name !== resolvedName || bio !== (me.bio ?? "") || location !== (me.location ?? "");
 
   async function handleFileSelected(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -92,18 +108,30 @@ function AccountForm({ me }: { me: UserProfile }) {
       const blob = dataUrlToBlob(editedDataUrl);
       const assetType = editorField === "avatarUrl" ? "AVATAR" : "BANNER";
       const filename = `${assetType.toLowerCase()}.jpg`;
+
+      // Show skeleton while uploading
+      if (editorField === "bannerUrl") setBannerLoading(true);
+      if (editorField === "avatarUrl") setAvatarLoading(true);
+
       const uploaded = await uploadAsset({ file: blob, filename, type: assetType }).unwrap();
-      await updateMe({ [editorField]: uploaded.url }).unwrap();
+      // Resolve full URL if needed
+      const resolvedUrl = uploaded.url.startsWith("https://")
+        ? uploaded.url
+        : `https://amzn-s3-spark-buket.s3.ap-south-1.amazonaws.com/${uploaded.url.replace(/^\//, "")}`;
+      await updateMe({ [editorField]: resolvedUrl }).unwrap();
       toast.success(
         editorField === "avatarUrl" ? "Profile photo updated" : "Cover photo updated"
       );
     } catch {
       toast.error("Couldn't save that photo. Please try again.");
+    } finally {
+      setBannerLoading(false);
+      setAvatarLoading(false);
     }
   }
 
   function handleSave() {
-    updateMe({ name: name.trim() || me.name, bio: bio.trim(), location: location.trim() })
+    updateMe({ name: name.trim() || resolvedName, bio: bio.trim(), location: location.trim() })
       .unwrap()
       .then(() => toast.success("Account updated"))
       .catch(() => toast.error("Couldn't save your changes. Please try again."));
@@ -119,9 +147,19 @@ function AccountForm({ me }: { me: UserProfile }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         <div className="overflow-hidden rounded-2xl border border-border">
+          {/* Banner with loading skeleton */}
           <div className="relative h-24 bg-muted">
+            {bannerLoading && (
+              <div className="absolute inset-0 animate-pulse bg-muted z-10" />
+            )}
             {me.bannerUrl && (
-              <img src={me.bannerUrl} alt="" className="size-full object-cover" />
+              <img
+                src={me.bannerUrl}
+                alt=""
+                className={cn("size-full object-cover transition-opacity duration-300", bannerLoading ? "opacity-0" : "opacity-100")}
+                onLoad={() => setBannerLoading(false)}
+                onError={() => setBannerLoading(false)}
+              />
             )}
             <input
               ref={bannerInputRef}
@@ -134,20 +172,33 @@ function AccountForm({ me }: { me: UserProfile }) {
               type="button"
               variant="secondary"
               size="sm"
-              className="absolute bottom-2 right-2 gap-1.5 shadow-sm"
+              className="absolute bottom-2 right-2 gap-1.5 shadow-sm z-20"
               onClick={() => bannerInputRef.current?.click()}
               disabled={uploading}
             >
-              <ImageIcon className="size-3.5" />
+              {uploading && editorField === "bannerUrl" ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : (
+                <ImageIcon className="size-3.5" />
+              )}
               Change cover
             </Button>
           </div>
 
           <div className="flex items-center gap-4 p-4 -mt-8">
             <div className="relative shrink-0">
+              {/* Avatar with loading skeleton */}
+              {avatarLoading && (
+                <div className="size-16 rounded-full ring-4 ring-card bg-muted animate-pulse absolute inset-0 z-10" />
+              )}
               <Avatar className="size-16 ring-4 ring-card">
-                <AvatarImage src={me.avatarUrl ?? undefined} alt={me.name} />
-                <AvatarFallback>{me.name[0]}</AvatarFallback>
+                <AvatarImage
+                  src={me.avatarUrl ?? undefined}
+                  alt={me.name}
+                  onLoad={() => setAvatarLoading(false)}
+                  onError={() => setAvatarLoading(false)}
+                />
+                <AvatarFallback>{resolvedName[0]}</AvatarFallback>
               </Avatar>
               <input
                 ref={avatarInputRef}
@@ -161,9 +212,13 @@ function AccountForm({ me }: { me: UserProfile }) {
                 onClick={() => avatarInputRef.current?.click()}
                 disabled={uploading}
                 aria-label="Change profile photo"
-                className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-60"
+                className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-60 z-20"
               >
-                <CameraIcon className="size-3.5" />
+                {uploading && editorField === "avatarUrl" ? (
+                  <Loader2Icon className="size-3.5 animate-spin" />
+                ) : (
+                  <CameraIcon className="size-3.5" />
+                )}
               </button>
             </div>
             <p className="text-xs text-muted-foreground">

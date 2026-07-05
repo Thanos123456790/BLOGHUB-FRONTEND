@@ -3,6 +3,7 @@
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  DockIcon,
   GripVerticalIcon,
   ImageIcon,
   Trash2Icon,
@@ -16,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { EmojiPopover } from "./emoji-popover";
 import { ImagePickerDialog } from "./image-picker-dialog";
+import { AssetType } from "@/lib/api/types";
 
 export function BlockEditorItem({
   block,
@@ -24,6 +26,7 @@ export function BlockEditorItem({
   onChange,
   onMove,
   onRemove,
+  onUpload, 
 }: {
   block: EditorBlock;
   isFirst: boolean;
@@ -31,7 +34,9 @@ export function BlockEditorItem({
   onChange: (patch: Partial<EditorBlock>) => void;
   onMove: (direction: "up" | "down") => void;
   onRemove: () => void;
+  onUpload?: (file: File, type: AssetType) => Promise<string>;
 }) {
+
   return (
     <div className="group relative rounded-2xl border border-border bg-card p-4">
       <div className="absolute -left-2 top-4 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -119,6 +124,92 @@ export function BlockEditorItem({
         </div>
       )}
 
+      {block.type === "pdf" && (
+        <div className="space-y-2">
+          {block.content ? (
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-xl border border-border">
+              <span className="text-3xl"><DockIcon/></span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">PDF attached</p>
+                <p className="text-xs text-muted-foreground truncate">{block.content.split("/").pop()}</p>
+              </div>
+              <button type="button" onClick={() => onChange({ content: "" })} className="text-xs text-destructive hover:underline">
+                Remove
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl p-8 cursor-pointer hover:border-primary transition-colors">
+              <span className="text-4xl mb-2">📄</span>
+              <span className="text-sm text-muted-foreground">Click to upload PDF (max 50 MB)</span>
+              <input type="file" accept="application/pdf" className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file && onUpload) {
+                    const url = await onUpload(file, "BLOG_BLOCK_PDF");
+                    onChange({ content: url });
+                  }
+                }}
+              />
+            </label>
+          )}
+          <input type="text" placeholder="Caption (optional)" value={block.caption ?? ""}
+            onChange={(e) => onChange({ caption: e.target.value })}
+            className="w-full text-sm bg-transparent outline-none border-b border-border pb-1 text-muted-foreground placeholder:text-muted-foreground"
+          />
+        </div>
+      )}
+{/* 
+      {block.type === "video" && (
+        <div className="space-y-3">
+          <input type="url" placeholder="Paste YouTube / Vimeo URL…" value={block.content}
+            onChange={(e) => onChange({ content: e.target.value })}
+            className="w-full text-sm border border-border rounded-xl px-3 py-2 bg-transparent outline-none"
+          />
+          {!block.content && (
+            <label className="flex items-center gap-2 text-sm text-primary cursor-pointer hover:underline w-fit">
+              <span>📁</span> Or upload a video file (max 500 MB)
+              <input type="file" accept="video/*" className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file && onUpload) {
+                    const url = await onUpload(file, "BLOG_BLOCK_VIDEO");
+                    onChange({ content: url });
+                  }
+                }}
+              />
+            </label>
+          )}
+          {block.content && (
+            <video controls className="w-full rounded-xl max-h-48 bg-black">
+              <source src={block.content} />
+            </video>
+          )}
+        </div>
+      )} */}
+
+      {block.type === "code" && (
+        <div className="rounded-xl overflow-hidden border border-border bg-gray-950">
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-900 border-b border-gray-700">
+            <label className="text-xs text-gray-400">Language:</label>
+            <select value={block.language ?? "javascript"}
+              onChange={(e) => onChange({ language: e.target.value })}
+              className="bg-gray-800 text-gray-200 text-xs rounded px-2 py-0.5 outline-none border border-gray-700"
+            >
+              {["javascript", "typescript", "python", "java", "kotlin", "go", "rust", "c", "cpp", "csharp", "bash", "sql", "json", "yaml", "html", "css"].map(l => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
+          </div>
+          <textarea
+            className="w-full min-h-[150px] bg-transparent text-green-400 font-mono text-sm px-4 py-3 outline-none resize-y"
+            placeholder="// paste or type your code here"
+            value={block.content}
+            spellCheck={false}
+            onChange={(e) => onChange({ content: e.target.value })}
+          />
+        </div>
+      )}
+
       {block.type === "image" && (
         <div>
           <ImagePickerDialog
@@ -177,6 +268,8 @@ export function BlockEditorItem({
               ))}
             </div>
           )}
+
+
 
           <Input
             value={block.caption ?? ""}
